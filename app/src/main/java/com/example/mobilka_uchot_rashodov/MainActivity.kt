@@ -10,6 +10,7 @@ import com.example.mobilka_uchot_rashodov.ui.ExpenseViewModel
 import com.example.mobilka_uchot_rashodov.ui.ListScreen
 import com.example.mobilka_uchot_rashodov.ui.theme.Mobilka_Uchot_rashodovTheme
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

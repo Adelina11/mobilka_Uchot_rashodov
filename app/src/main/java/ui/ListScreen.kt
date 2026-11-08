@@ -1,41 +1,25 @@
 package com.example.mobilka_uchot_rashodov.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.mobilka_uchot_rashodov.data.CATEGORIES
 import com.example.mobilka_uchot_rashodov.data.Expense
 import java.time.Instant
 import java.time.LocalDate
@@ -58,51 +42,122 @@ fun ListScreen(vm: ExpenseViewModel, onAdd: () -> Unit) {
     var toDelete by remember { mutableStateOf<Expense?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Расходы") }) },
-        floatingActionButton = { FloatingActionButton(onClick = onAdd) { Icon(Icons.Default.Add, null) } }
+        topBar = {
+            TopAppBar(
+                title = { Text("Мои расходы", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAdd,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Добавить")
+            }
+        }
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(pad).fillMaxSize().padding(horizontal = 8.dp)) {
+
+            // Фильтры
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { pickFrom = true }, Modifier.weight(1f)) {
-                    Text("С: ${from ?: "—"}")
+                    Text("С: ${from ?: "—"}", fontSize = 12.sp)
                 }
                 OutlinedButton(onClick = { pickTo = true }, Modifier.weight(1f)) {
-                    Text("По: ${to ?: "—"}")
+                    Text("По: ${to ?: "—"}", fontSize = 12.sp)
                 }
                 TextButton(onClick = { vm.resetFilter() }) { Text("Сброс") }
             }
 
-            Card(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("Итог за период: ${formatRub(total)}", style = MaterialTheme.typography.titleMedium)
-                    byCat.forEach { (c, v) -> Text("$c: ${formatRub(v)}") }
+            // Карточка с итогом
+            Card(
+                Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Итог за период", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text(
+                        formatRub(total),
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Разбивка по категориям
+                    byCat.forEach { (c, v) ->
+                        if (v > 0) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(c, fontSize = 12.sp)
+                                Text(formatRub(v), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
                 }
             }
 
-            LazyColumn(Modifier.weight(1f)) {
+            // Список записей
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(filtered, key = { it.id }) { e ->
-                    ListItem(
-                        headlineContent = { Text("${formatRub(e.amountKopecks)} • ${e.category}") },
-                        supportingContent = {
-                            Text("${Instant.ofEpochMilli(e.dateMillis).atZone(ZoneOffset.UTC).toLocalDate()}" +
-                                    (e.comment?.let { " — $it" } ?: ""))
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { toDelete = e }) { Icon(Icons.Default.Delete, "Удалить") }
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            Modifier.padding(12.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Левая часть с иконкой категории (цветной кружок)
+                            Box(
+                                Modifier.size(40.dp).clip(RoundedCornerShape(20.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(e.category.take(1).uppercase(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Центральная часть (текст)
+                            Column(Modifier.weight(1f)) {
+                                Text(e.category.replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "${Instant.ofEpochMilli(e.dateMillis).atZone(ZoneOffset.UTC).toLocalDate()}" +
+                                            (e.comment?.let { " • $it" } ?: ""),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // Правая часть (сумма и удаление)
+                            Text(formatRub(e.amountKopecks), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            IconButton(onClick = { toDelete = e }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
+                            }
                         }
-                    )
-                    HorizontalDivider()
+                    }
                 }
             }
         }
     }
 
+    // Диалог удаления
     toDelete?.let { e ->
         AlertDialog(
             onDismissRequest = { toDelete = null },
             title = { Text("Удалить запись?") },
             text = { Text("${formatRub(e.amountKopecks)} • ${e.category}") },
-            confirmButton = { TextButton(onClick = { vm.delete(e); toDelete = null }) { Text("Удалить") } },
+            confirmButton = {
+                TextButton(onClick = { vm.delete(e); toDelete = null }) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
             dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Отмена") } }
         )
     }
